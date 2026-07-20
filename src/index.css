@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #18a058;
+  --color-navy: #0c1b33;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: #1a202e;
+}
+
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: #d8e2e8;
+}
+
+/* divIcon wrappers: kill Leaflet's default white box */
+.farm-pin-wrap {
+  background: transparent;
+  border: none;
+}
+
+.farm-pin {
+  box-sizing: border-box;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.45);
+  transition: width 0.15s ease, height 0.15s ease;
+}
+
+.farm-pin--selected {
+  box-shadow:
+    0 0 0 4px rgba(24, 160, 88, 0.4),
+    0 1px 4px rgba(15, 23, 42, 0.45);
+}
+
+.farm-cluster {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #0c1b33;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.4);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+@keyframes panel-in {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
