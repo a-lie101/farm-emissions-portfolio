@@ -65,7 +65,7 @@ export default function TopBar({ filters, onChange }: Props) {
             type="search"
             value={filters.query}
             onChange={(e) => onChange({ ...filters, query: e.target.value })}
-            placeholder="Search farms"
+            placeholder="Search"
             className="h-9 w-32 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-emerald-500 focus:bg-white"
           />
         </div>
