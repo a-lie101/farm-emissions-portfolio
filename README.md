@@ -1,7 +1,8 @@
 # FCC Prototype — Farm Emissions Portfolio Map
 
-Lender-facing prototype: carbon emissions across a Canadian farm loan portfolio on a
-full-screen interactive map. Frontend only — all data is hardcoded in
+Lender-facing prototype for **Agri Credit Canada**, a sample agricultural lender
+financing ~78 large corporate farm operations: carbon emissions across its farm loan
+portfolio on a full-screen interactive map. Frontend only — all data is hardcoded in
 [`src/data/farms.ts`](src/data/farms.ts) (77 seeded sample farms plus one demo farm,
 Gavelin Farms, backed by a real Holos whole-farm emissions run).
 

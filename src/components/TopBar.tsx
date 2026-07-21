@@ -1,5 +1,6 @@
 import { FARMS } from "../data/farms";
 import logo from "../assets/logo.png";
+import AccountMenu from "./AccountMenu";
 
 export interface Filters {
   query: string;
@@ -34,7 +35,7 @@ const avgPcaf = FARMS.reduce((s, f) => s + f.pcafScore, 0) / FARMS.length;
 
 export default function TopBar({ filters, onChange }: Props) {
   const selectClass =
-    "h-9 w-32 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 outline-none transition hover:bg-slate-50 focus:border-emerald-500";
+    "h-9 w-28 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 outline-none transition hover:bg-slate-50 focus:border-emerald-500";
 
   return (
     <header className="relative z-[1200] flex h-16 shrink-0 items-center gap-6 border-b border-slate-200 bg-white px-5">
@@ -65,7 +66,7 @@ export default function TopBar({ filters, onChange }: Props) {
             value={filters.query}
             onChange={(e) => onChange({ ...filters, query: e.target.value })}
             placeholder="Search farms"
-            className="h-9 w-36 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-emerald-500 focus:bg-white"
+            className="h-9 w-32 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-emerald-500 focus:bg-white"
           />
         </div>
         <select
@@ -92,6 +93,7 @@ export default function TopBar({ filters, onChange }: Props) {
             </option>
           ))}
         </select>
+        <AccountMenu />
       </div>
     </header>
   );
