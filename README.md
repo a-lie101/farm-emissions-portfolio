@@ -1,4 +1,4 @@
-# FCC Prototype — Farm Emissions Portfolio Map
+# Farm Emissions Portfolio
 
 Lender-facing prototype for **Agri Credit Canada**, a sample agricultural lender
 financing ~78 large corporate farm operations: carbon emissions across its farm loan
@@ -6,7 +6,7 @@ portfolio on a full-screen interactive map. Frontend only — all data is hardco
 [`src/data/farms.ts`](src/data/farms.ts) (77 seeded sample farms plus one demo farm,
 Gavelin Farms, backed by a real Holos whole-farm emissions run).
 
-**Live demo:** https://a-lie101.github.io/fcc-prototype/
+**Live demo:** https://a-lie101.github.io/farm-emissions-portfolio/
 
 ## Features
 
