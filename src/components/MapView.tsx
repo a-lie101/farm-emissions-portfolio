@@ -119,6 +119,9 @@ export default function MapView({ farms, selected, mapStyle, onSelect }: Props) 
       )}
 
       <MarkerClusterGroup
+        // react-leaflet-cluster v2 drops markers added after mount; remount the
+        // group whenever the filtered farm set changes.
+        key={farms.map((f) => f.id).join(",")}
         chunkedLoading
         maxClusterRadius={50}
         showCoverageOnHover={false}

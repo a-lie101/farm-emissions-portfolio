@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { type Farm } from "../data/farms";
 import { exportFarmReport } from "../utils/exportXlsx";
+import NdviEvidence from "./NdviEvidence";
 
 const BREAKDOWN_SEGMENTS = [
   { key: "n2o", label: "Nitrous oxide (N₂O)", color: "#2f6fed" },
@@ -445,6 +446,11 @@ export default function DetailPanel({ farm, onClose }: Props) {
             ))}
           </div>
         </Section>
+        {farm.ndviEvidence && (
+          <Section title="Satellite verification">
+            <NdviEvidence />
+          </Section>
+        )}
         <Section title="Soil">
           <SoilCard farm={farm} />
         </Section>

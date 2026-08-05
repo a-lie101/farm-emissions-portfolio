@@ -58,6 +58,7 @@ export interface Farm {
   breakdown: { n2o: number; energy: number; soilCarbon: number };
   detail: EmissionsDetail;
   carbonNote?: string;
+  ndviEvidence?: boolean;
   rotation: RotationField[];
   practices: string[];
   soil: Soil;
@@ -323,6 +324,7 @@ const GAVELIN: Farm = {
   breakdown: { n2o: 504, energy: 150, soilCarbon: -75 },
   carbonNote:
     "Multi-year Holos (2009 onward): +1,280 t CO₂ removed; 8 of 12 fields gaining soil carbon (avg +455 kg C/ha).",
+  ndviEvidence: true,
   // Exact values from the Holos "Detailed Emission Report" (kg CO₂e → t, 1 dp).
   // R2 block fields are the per-field rows from the original detailed report;
   // R1 + standalone fields are split so all totals reconcile with the full-farm report.
