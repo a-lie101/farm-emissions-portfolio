@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { type Farm } from "../data/farms";
+import { farmAreaHa, type Farm } from "../data/farms";
 import { exportFarmReport } from "../utils/exportXlsx";
 import NdviEvidence from "./NdviEvidence";
+import InputCostCard from "./InputCostCard";
+import FundingCard from "./FundingCard";
 
 const BREAKDOWN_SEGMENTS = [
   { key: "n2o", label: "Nitrous oxide (N₂O)", color: "#2f6fed" },
@@ -11,10 +13,12 @@ const BREAKDOWN_SEGMENTS = [
 
 function Section({
   title,
+  tag,
   defaultOpen = false,
   children,
 }: {
   title: string;
+  tag?: string;
   defaultOpen?: boolean;
   children: ReactNode;
 }) {
@@ -25,7 +29,14 @@ function Section({
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-5 py-3.5 text-left transition hover:bg-slate-50"
       >
-        <span className="font-display text-sm font-bold text-slate-800">{title}</span>
+        <span className="flex items-center gap-2 font-display text-sm font-bold text-slate-800">
+          {title}
+          {tag && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+              {tag}
+            </span>
+          )}
+        </span>
         <svg
           viewBox="0 0 24 24"
           className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
@@ -375,7 +386,7 @@ interface Props {
 }
 
 export default function DetailPanel({ farm, onClose }: Props) {
-  const farmArea = farm.detail.fields.reduce((s, f) => s + f.areaHa, 0);
+  const farmArea = farmAreaHa(farm);
   return (
     <aside
       key={farm.id}
@@ -430,6 +441,12 @@ export default function DetailPanel({ farm, onClose }: Props) {
       <div className="flex-1 overflow-y-auto">
         <Section title="Emissions breakdown" defaultOpen>
           <EmissionsBreakdown farm={farm} />
+        </Section>
+        <Section title="Input cost opportunity" tag="Estimated" defaultOpen>
+          <InputCostCard farm={farm} />
+        </Section>
+        <Section title="Funding opportunities" tag="Estimated" defaultOpen>
+          <FundingCard farm={farm} />
         </Section>
         <Section title="Crop rotation">
           <RotationGrid farm={farm} />

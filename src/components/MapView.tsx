@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, Tooltip, useMap, useMapEvents, ZoomControl } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import { intensityColor, type Farm } from "../data/farms";
+import { ASSUMPTIONS } from "../config/assumptions";
+import { inputCostOpportunity } from "../lib/inputCostOpportunity";
+import { costColor } from "./costScale";
+import { formatCAD } from "../utils/format";
+import type { DataMode } from "./DataModeToggle";
 
 export type MapStyle = "map" | "satellite";
 
@@ -69,12 +74,25 @@ interface Props {
   farms: Farm[];
   selected: Farm | null;
   mapStyle: MapStyle;
+  dataMode: DataMode;
   onSelect: (id: string) => void;
 }
 
-export default function MapView({ farms, selected, mapStyle, onSelect }: Props) {
+export default function MapView({ farms, selected, mapStyle, dataMode, onSelect }: Props) {
   const [zoom, setZoom] = useState(4);
   const size = pinDiameter(zoom);
+
+  // Recoverable $/ha per farm for cost mode. Null renders muted.
+  const costPerHa = useMemo(
+    () =>
+      new Map(
+        farms.map((f) => [f.id, inputCostOpportunity(f, ASSUMPTIONS)?.recoverablePerHaCAD ?? null])
+      ),
+    [farms]
+  );
+
+  const pinColor = (farm: Farm) =>
+    dataMode === "cost" ? costColor(costPerHa.get(farm.id) ?? null) : intensityColor(farm.intensity);
 
   return (
     <MapContainer
@@ -120,8 +138,8 @@ export default function MapView({ farms, selected, mapStyle, onSelect }: Props) 
 
       <MarkerClusterGroup
         // react-leaflet-cluster v2 drops markers added after mount; remount the
-        // group whenever the filtered farm set changes.
-        key={farms.map((f) => f.id).join(",")}
+        // group whenever the filtered farm set or the data mode changes.
+        key={`${dataMode}:${farms.map((f) => f.id).join(",")}`}
         chunkedLoading
         maxClusterRadius={50}
         showCoverageOnHover={false}
@@ -131,17 +149,22 @@ export default function MapView({ farms, selected, mapStyle, onSelect }: Props) 
       >
         {farms.map((farm) => {
           const isSelected = selected?.id === farm.id;
+          const perHa = costPerHa.get(farm.id) ?? null;
           return (
             <Marker
               key={farm.id}
               position={[farm.lat, farm.lon]}
-              icon={pinIcon(intensityColor(farm.intensity), size, isSelected)}
+              icon={pinIcon(pinColor(farm), size, isSelected)}
               eventHandlers={{ click: () => onSelect(farm.id) }}
             >
               <Tooltip direction="top" offset={[0, -size / 2]}>
                 <span className="font-semibold">{farm.name}</span>
                 <br />
-                {farm.intensity.toFixed(2)} t CO{"₂"}e/ha
+                {dataMode === "cost"
+                  ? perHa === null
+                    ? "No estimate"
+                    : `${formatCAD(perHa)}/ha/yr est.`
+                  : `${farm.intensity.toFixed(2)} t CO₂e/ha`}
               </Tooltip>
             </Marker>
           );

@@ -44,6 +44,8 @@ export interface EmissionsDetail {
   fields: EmissionField[];
 }
 
+export type CoverCropSignal = "detected" | "not_detected" | "unknown";
+
 export interface Farm {
   id: string;
   name: string;
@@ -59,12 +61,21 @@ export interface Farm {
   detail: EmissionsDetail;
   carbonNote?: string;
   ndviEvidence?: boolean;
+  // Annual synthetic N applied, farm level, kg. Derived values get the
+  // Estimated UI treatment (see docs/research-appendix.md).
+  nAppliedKg: number;
+  nAppliedDerived: boolean;
+  coverCropSignal: CoverCropSignal;
+  hasLivestock: boolean;
   rotation: RotationField[];
   practices: string[];
   soil: Soil;
   provenance: ProvenanceRow[];
   isReal: boolean;
 }
+
+export const farmAreaHa = (farm: Farm): number =>
+  farm.detail.fields.reduce((s, f) => s + f.areaHa, 0);
 
 // Deterministic PRNG so the sample portfolio is stable across reloads.
 function mulberry32(seed: number) {
@@ -325,6 +336,14 @@ const GAVELIN: Farm = {
   carbonNote:
     "Multi-year Holos (2009 onward): +1,280 t CO₂ removed; 8 of 12 fields gaining soil carbon (avg +455 kg C/ha).",
   ndviEvidence: true,
+  // Inferred from yield in the Holos pipeline, ticket worked example.
+  // 55,000 kg over 768 ha is about 72 kg N/ha, plausible prairie grain.
+  nAppliedKg: 55000,
+  nAppliedDerived: true,
+  // NDVI paired-field analysis detected cover cropping in fall 2021.
+  coverCropSignal: "detected",
+  // Land is partly grazed per the Gavelin data sheet.
+  hasLivestock: true,
   // Exact values from the Holos "Detailed Emission Report" (kg CO₂e → t, 1 dp).
   // R2 block fields are the per-field rows from the original detailed report;
   // R1 + standalone fields are split so all totals reconcile with the full-farm report.
@@ -435,8 +454,36 @@ function generateFarms(): Farm[] {
         },
         provenance: genProvenance(),
         isReal: false,
+        // Placeholders, overwritten by the deterministic pass below.
+        nAppliedKg: 0,
+        nAppliedDerived: true,
+        coverCropSignal: "unknown",
+        hasLivestock: false,
       });
     }
+  }
+
+  // Derive N use and practice signals for sample farms from values that
+  // already exist. No rand() calls here, so the dataset stays identical
+  // across loads and across this change.
+  // N rate bands: prairie grain 50-90 kg N/ha, corn-belt (ON, QC) 120-170.
+  // Scaling by emissions intensity is causally sensible: more N, more N2O.
+  for (let i = 1; i < farms.length; i++) {
+    const farm = farms[i];
+    const area = farmAreaHa(farm);
+    const cornBelt = farm.province === "ON" || farm.province === "QC";
+    const nPerHa = cornBelt
+      ? 120 + (farm.intensity / 1.2) * 50
+      : 50 + (farm.intensity / 1.2) * 40;
+    farm.nAppliedKg = Math.round(nPerHa * area);
+    farm.nAppliedDerived = true;
+    farm.coverCropSignal =
+      farm.province === "QC" || farm.province === "BC"
+        ? "unknown"
+        : farm.practices.includes("Cover crops")
+          ? "detected"
+          : "not_detected";
+    farm.hasLivestock = farm.practices.includes("Rotational grazing");
   }
 
   // Nudge sample scores (never Gavelin's) so the portfolio average is exactly 3.0.
