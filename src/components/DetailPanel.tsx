@@ -2,6 +2,9 @@ import { useState, type ReactNode } from "react";
 import { type Farm } from "../data/farms";
 import { exportFarmReport } from "../utils/exportXlsx";
 import NdviEvidence from "./NdviEvidence";
+import RotationAnalysisTab from "./RotationAnalysisTab";
+import { getRotationAnalysis } from "../data/rotationAnalysis";
+import { CROP_STYLES, FALLBACK_CROP_STYLE } from "../data/cropStyles";
 
 const BREAKDOWN_SEGMENTS = [
   { key: "n2o", label: "Nitrous oxide (N₂O)", color: "#2f6fed" },
@@ -205,19 +208,6 @@ function EmissionsBreakdown({ farm }: { farm: Farm }) {
   );
 }
 
-const CROP_STYLES: Record<string, { bg: string; text: string; abbr: string; pulse?: boolean }> = {
-  Wheat: { bg: "#fef3c7", text: "#92400e", abbr: "W" },
-  Durum: { bg: "#fde68a", text: "#78350f", abbr: "D" },
-  Barley: { bg: "#ffedd5", text: "#9a3412", abbr: "B" },
-  Oats: { bg: "#e7e5e4", text: "#57534e", abbr: "O" },
-  Canola: { bg: "#fef9c3", text: "#a16207", abbr: "C" },
-  Flax: { bg: "#dbeafe", text: "#1e40af", abbr: "F" },
-  Lentils: { bg: "#d1fae5", text: "#065f46", abbr: "L", pulse: true },
-  Peas: { bg: "#dcfce7", text: "#166534", abbr: "P", pulse: true },
-};
-
-const FALLBACK_CROP_STYLE = { bg: "#f1f5f9", text: "#475569", abbr: "?" };
-
 function RotationGrid({ farm }: { farm: Farm }) {
   const cropsPresent = [...new Set(farm.rotation.flatMap((f) => f.crops))];
   const maxYears = Math.max(...farm.rotation.map((f) => f.crops.length));
@@ -376,6 +366,9 @@ interface Props {
 
 export default function DetailPanel({ farm, onClose }: Props) {
   const farmArea = farm.detail.fields.reduce((s, f) => s + f.areaHa, 0);
+  const fieldCount = farm.detail.fields.length;
+  const analysis = getRotationAnalysis(farm);
+  const [tab, setTab] = useState<"emissions" | "rotation">("emissions");
   return (
     <aside
       key={farm.id}
@@ -389,7 +382,8 @@ export default function DetailPanel({ farm, onClose }: Props) {
               {farm.name}
             </h2>
             <p className="mt-0.5 text-sm text-slate-500">
-              {farm.location} · {farmArea.toLocaleString()} ha · {farm.detail.fields.length} fields
+              {farm.location} · {farmArea.toLocaleString()} ha ·{" "}
+              {fieldCount === 1 ? "1 field" : `${fieldCount} fields`}
             </p>
           </div>
           <button
@@ -403,13 +397,34 @@ export default function DetailPanel({ farm, onClose }: Props) {
           </button>
         </div>
 
-        <span
-          className={`mt-2 inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${
-            farm.isReal ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
-          }`}
-        >
-          {farm.isReal ? "Demo farm — real Holos run" : "Sample data"}
-        </span>
+        {analysis ? (
+          <div className="mt-2.5 flex gap-1 rounded-lg bg-slate-100 p-1">
+            {(
+              [
+                ["emissions", "Emissions"],
+                ["rotation", "Crop rotation analysis"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition ${
+                  tab === key ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span
+            className={`mt-2 inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${
+              farm.isReal ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {farm.isReal ? "Demo farm — real Holos run" : "Sample data"}
+          </span>
+        )}
 
         <div className="mt-4 flex items-end justify-between">
           <div>
@@ -428,6 +443,10 @@ export default function DetailPanel({ farm, onClose }: Props) {
 
       {/* Accordion */}
       <div className="flex-1 overflow-y-auto">
+        {analysis && tab === "rotation" ? (
+          <RotationAnalysisTab analysis={analysis} />
+        ) : (
+          <>
         <Section title="Emissions breakdown" defaultOpen>
           <EmissionsBreakdown farm={farm} />
         </Section>
@@ -457,6 +476,8 @@ export default function DetailPanel({ farm, onClose }: Props) {
         <Section title="Data provenance">
           <ProvenanceList farm={farm} />
         </Section>
+          </>
+        )}
       </div>
 
       {/* Footer */}
