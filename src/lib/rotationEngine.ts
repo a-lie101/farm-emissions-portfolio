@@ -149,7 +149,7 @@ const PATHOGEN_RULES: PathogenRule[] = [
     severity: "HARD",
     binding: true,
     publisher: "Canola Council of Canada",
-    url: "https://www.canolacouncil.org/canola-encyclopedia/diseases/blackleg/",
+    url: "https://www.canolacouncil.org/canola-watch/2020/08/19/blackleg-scouting-identification-and-next-steps/",
   },
   {
     pathogen: "Clubroot (Plasmodiophora brassicae)",
@@ -160,7 +160,7 @@ const PATHOGEN_RULES: PathogenRule[] = [
     severity: "HARD",
     binding: true,
     publisher: "Manitoba Agriculture",
-    url: "https://www.manitoba.ca/agriculture/crops/plant-diseases/clubroot-of-canola.html",
+    url: "https://www.gov.mb.ca/agriculture/crops/plant-diseases/clubroot-brassica.html",
   },
   {
     pathogen: "Fusarium head blight (F. graminearum)",

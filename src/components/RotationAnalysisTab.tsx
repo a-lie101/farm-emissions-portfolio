@@ -5,32 +5,16 @@ import type { RotationAnalysis } from "../lib/rotationEngine";
 const money = (v: number) => "$" + Math.round(v).toLocaleString("en-CA");
 const perAcre = (v: number) => "$" + v.toFixed(2);
 
-const listAnd = (items: string[]) =>
-  items.length <= 1
-    ? (items[0] ?? "")
-    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-
 function Disclosure({
   title,
-  pill,
-  tone,
   defaultOpen = true,
   children,
 }: {
   title: string;
-  pill?: string;
-  tone: "green" | "red" | "amber" | "slate";
   defaultOpen?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const pillCls = {
-    green: "bg-emerald-100 text-emerald-700",
-    red: "bg-red-100 text-red-700",
-    amber: "bg-amber-100 text-amber-700",
-    slate: "bg-slate-100 text-slate-600",
-  }[tone];
-
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
       <button
@@ -38,9 +22,6 @@ function Disclosure({
         className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
       >
         <span className="font-display text-sm font-bold text-slate-800">{title}</span>
-        {pill && (
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls}`}>{pill}</span>
-        )}
         <svg
           viewBox="0 0 24 24"
           className={`ml-auto h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
@@ -52,6 +33,35 @@ function Disclosure({
         </svg>
       </button>
       {open && <div className="border-t border-slate-100 px-3.5 py-3">{children}</div>}
+    </div>
+  );
+}
+
+// Per-acre and whole-field figures carry equal weight, so a reader can take
+// either one depending on whether they think in rates or in totals.
+function StatPair({
+  perAcreValue,
+  fieldValue,
+  fieldLabel = "across the field",
+}: {
+  perAcreValue: number;
+  fieldValue: number;
+  fieldLabel?: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-8 gap-y-2">
+      <div>
+        <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
+          {perAcre(perAcreValue)}
+        </p>
+        <p className="mt-0.5 text-[11px] text-slate-500">per acre</p>
+      </div>
+      <div>
+        <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
+          {money(fieldValue)}
+        </p>
+        <p className="mt-0.5 text-[11px] text-slate-500">{fieldLabel}</p>
+      </div>
     </div>
   );
 }
@@ -90,17 +100,15 @@ function SequenceRow({ label, crops, muted }: { label: string; crops: string[]; 
 export default function RotationAnalysisTab({ analysis }: { analysis: RotationAnalysis }) {
   const { nitrogen, disease, yieldRisk } = analysis;
   const broken = disease.rules.filter((r) => r.binding && r.verdict === "FAIL");
-  const tightCropList = [...new Set(yieldRisk.charges.map((c) => c.crop))];
-  const tightCrops = listAnd(tightCropList);
 
-  // When a reordering is on screen, the nitrogen line describes what that
-  // reordering does to the credit rather than restating the transition.
   const showsReorder = !analysis.alreadyOptimal && nitrogen.bestPossibleLb > 0;
-  const bestValueField = nitrogen.bestPossibleLb * nitrogen.pricePerLb * analysis.acres;
-  const headlinePerAc =
+  // Where the pulse is currently wasted, the figure is what reordering would
+  // recover. Where it is already captured, it is what the order protects.
+  const savingsPerAc =
     nitrogen.wastedLb > 0
       ? nitrogen.bestPossibleLb * nitrogen.pricePerLb
       : nitrogen.capturedValuePerAc;
+  const savingsField = savingsPerAc * analysis.acres;
 
   return (
     <div className="space-y-4 px-5 py-4">
@@ -125,37 +133,31 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
         </div>
       </div>
 
-      {/* Money already earned */}
-      <Disclosure
-        title="Nitrogen saved"
-        pill={
-          nitrogen.capturedLb === 0 ? "None" : nitrogen.arrangedWell ? "Arranged well" : "Could be better"
-        }
-        tone={nitrogen.capturedLb === 0 ? "slate" : nitrogen.arrangedWell ? "green" : "amber"}
-      >
+      {/* Money on the table */}
+      <Disclosure title="Potential nitrogen savings">
         {nitrogen.bestPossibleLb > 0 ? (
           <>
-            <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
-              {perAcre(headlinePerAc)}
-              <span className="ml-1.5 text-base font-bold text-slate-500">per acre</span>
+            <StatPair perAcreValue={savingsPerAc} fieldValue={savingsField} />
+            <p className="mt-3 text-xs leading-relaxed text-slate-600">
+              {showsReorder ? (
+                <>
+                  The same crops reordered according to best practices will lead to nitrogen
+                  fertilizer savings of{" "}
+                  <span className="font-semibold text-slate-800">
+                    {perAcre(savingsPerAc)} per acre
+                  </span>{" "}
+                  while still following the disease-prevention rules at the same time.
+                </>
+              ) : (
+                <>
+                  This sequence already captures nitrogen fertilizer savings of{" "}
+                  <span className="font-semibold text-slate-800">
+                    {perAcre(savingsPerAc)} per acre
+                  </span>
+                  , with the pulse crop placed ahead of a crop that buys fertiliser.
+                </>
+              )}
             </p>
-            {showsReorder ? (
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                {nitrogen.wastedLb > 0
-                  ? `The same crops, reordered, satisfy the disease rules and place the pulse nitrogen ahead of a crop that buys fertiliser — about ${money(bestValueField)} of fertiliser-equivalent value, subject to soil testing.`
-                  : `The same crops, reordered, satisfy the disease rules while preserving the full pulse nitrogen contribution of about ${money(nitrogen.capturedValueField)}.`}
-              </p>
-            ) : (
-              <>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {money(nitrogen.capturedValueField)} across the field
-                </p>
-                <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
-                  {nitrogen.creditCrop} left a {nitrogen.capturedLb} lb/ac nitrogen credit for the{" "}
-                  {nitrogen.creditFollower?.toLowerCase()} that followed.
-                </p>
-              </>
-            )}
           </>
         ) : (
           <p className="text-xs leading-relaxed text-slate-600">
@@ -165,67 +167,65 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
         )}
       </Disclosure>
 
-      {/* What is wrong */}
-      <Disclosure
-        title="Disease risk"
-        pill={broken.length ? `${broken.length} problem${broken.length === 1 ? "" : "s"}` : "Clear"}
-        tone={broken.length ? "red" : "green"}
-      >
+      {/* What the sequencing exposes the field to */}
+      <Disclosure title="Disease risk">
         {broken.length ? (
           <>
-            <p className="text-xs leading-relaxed text-slate-700">
-              {disease.plainCause}
+            <p className="text-xs leading-relaxed text-slate-600">
+              Given the sequencing of crops, there is an increased risk for the following diseases
+              on this field:
             </p>
             <div className="mt-2.5 space-y-1.5">
               {broken.map((rule) => (
                 <div key={rule.pathogen} className="flex items-baseline justify-between gap-2">
                   <span className="text-xs font-semibold text-slate-700">{rule.short}</span>
-                  <span className="shrink-0 text-[11px] text-slate-400">{rule.publisher}</span>
+                  <a
+                    href={rule.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 text-[11px] text-slate-400 underline decoration-slate-300 underline-offset-2 transition hover:text-emerald-700 hover:decoration-emerald-400"
+                  >
+                    {rule.publisher}
+                  </a>
                 </div>
               ))}
             </div>
           </>
         ) : (
           <p className="text-xs leading-relaxed text-slate-600">
-            Every crop is spaced far enough apart to keep the main rotation diseases down.
+            The sequencing of crops keeps every host far enough apart to avoid raising disease risk.
           </p>
         )}
       </Disclosure>
 
-      {/* What it costs */}
-      <Disclosure
-        title="Yield risk"
-        pill={
-          yieldRisk.tightYears
-            ? `${yieldRisk.tightYears} of ${yieldRisk.windowYears} years tight`
-            : "Clear"
-        }
-        tone={yieldRisk.tightYears ? "amber" : "green"}
-      >
+      {/* What that risk costs */}
+      <Disclosure title="Disease related costs">
         {yieldRisk.tightYears > 0 ? (
           <>
-            <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
-              {perAcre(yieldRisk.passPerAcre)}
-              <span className="ml-1.5 text-base font-bold text-slate-500">per acre</span>
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {money(yieldRisk.fieldTotalPerPass)} across the field, in each tight year
-            </p>
-            <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
-              Fungicide pass budgeted for tight{" "}
-              {tightCropList.length === 1 ? tightCrops.toLowerCase() : "rotation"} years. Yield loss
-              itself requires field scouting to quantify.
+            <StatPair
+              perAcreValue={yieldRisk.passPerAcre}
+              fieldValue={yieldRisk.fieldTotalPerPass}
+              fieldLabel="across the field"
+            />
+            <p className="mt-3 text-xs leading-relaxed text-slate-600">
+              For years where crops are inside an at risk rotation interval, the cost of an
+              additional fungicide pass is{" "}
+              <span className="font-semibold text-slate-800">
+                {perAcre(yieldRisk.passPerAcre)} per acre
+              </span>
+              . This applies to {yieldRisk.tightYears} of the last {yieldRisk.windowYears} years.
             </p>
           </>
         ) : (
           <p className="text-xs leading-relaxed text-slate-600">
-            No extra fungicide pass is expected from the way this rotation is spaced.
+            No year in this rotation falls inside an at risk interval, so no additional fungicide
+            pass is budgeted.
           </p>
         )}
       </Disclosure>
 
       {/* Quiet by default */}
-      <Disclosure title="Where this comes from" tone="slate" defaultOpen={false}>
+      <Disclosure title="Where this comes from" defaultOpen={false}>
         <p className="text-xs leading-relaxed text-slate-600">{analysis.sourceNote}</p>
         <p className="mt-2 text-xs leading-relaxed text-slate-600">{nitrogen.caveat}</p>
         <ul className="mt-2 space-y-1">
