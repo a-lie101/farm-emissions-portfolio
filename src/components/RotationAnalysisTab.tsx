@@ -49,13 +49,17 @@ function StatPair({
   fieldLabel?: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-x-8 gap-y-2">
+    <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
       <div>
         <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
           {perAcre(perAcreValue)}
         </p>
         <p className="mt-0.5 text-[11px] text-slate-500">per acre</p>
       </div>
+      {/* Reads as the per acre rate scaling up to the whole field. */}
+      <span aria-hidden className="mt-1.5 text-lg text-slate-300">
+        →
+      </span>
       <div>
         <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
           {money(fieldValue)}
@@ -134,7 +138,7 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
       </div>
 
       {/* Money on the table */}
-      <Disclosure title="Potential nitrogen savings">
+      <Disclosure title="Potential savings on nitrogen">
         {nitrogen.bestPossibleLb > 0 ? (
           <>
             <StatPair perAcreValue={savingsPerAc} fieldValue={savingsField} />
@@ -199,7 +203,7 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
       </Disclosure>
 
       {/* What that risk costs */}
-      <Disclosure title="Disease related costs">
+      <Disclosure title="Potential savings on fungicide">
         {yieldRisk.tightYears > 0 ? (
           <>
             <StatPair
