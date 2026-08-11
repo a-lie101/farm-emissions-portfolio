@@ -52,7 +52,9 @@ export function getRotationAnalysis(farm: Farm): RotationAnalysis | null {
     if (history.length > 0) {
       const acres = farm.detail.fields.reduce((s, f) => s + f.areaHa, 0) * HA_TO_ACRES;
       result = analyzeRotation(
-        farm.fieldId ?? farm.id,
+        // Internal ids mean nothing to a reader, so only a surveyed field
+        // number is shown.
+        farm.fieldId ?? "",
         isRealField ? C0183_ACRES : Math.round(acres * 10) / 10,
         history,
         isRealField

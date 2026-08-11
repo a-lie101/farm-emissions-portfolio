@@ -34,6 +34,9 @@ export interface NitrogenAssessment {
   transitions: NitrogenTransition[];
   pricePerLb: number;
   caveat: string;
+  // The pair that actually earned the money, for plain-language copy.
+  creditCrop: string | null;
+  creditFollower: string | null;
 }
 
 export type RuleVerdict = "PASS" | "WARN" | "FAIL" | "UNKNOWN";
@@ -48,6 +51,7 @@ export interface DiseaseRuleResult {
   minimumInterval: number;
   preferredInterval: number;
   hostYears: number[];
+  hostCrops: string[];
   plain: string;
   publisher: string;
   url: string;
@@ -56,6 +60,8 @@ export interface DiseaseRuleResult {
 export interface DiseaseAssessment {
   clean: boolean;
   headline: string;
+  // One sentence a reader with no agronomy background can act on.
+  plainCause: string;
   explanation: string;
   broken: string[];
   rules: DiseaseRuleResult[];
@@ -200,7 +206,9 @@ const minGap = (years: number[]): number | null => {
 };
 
 function evaluateRule(rule: PathogenRule, history: RotationYear[]): DiseaseRuleResult {
-  const hostYears = history.filter((h) => rule.hosts.includes(h.crop)).map((h) => h.year);
+  const hosts = history.filter((h) => rule.hosts.includes(h.crop));
+  const hostYears = hosts.map((h) => h.year);
+  const hostCrops = [...new Set(hosts.map((h) => h.crop))];
   const observed = minGap(hostYears);
 
   let verdict: RuleVerdict;
@@ -232,6 +240,7 @@ function evaluateRule(rule: PathogenRule, history: RotationYear[]): DiseaseRuleR
     minimumInterval: rule.minimum,
     preferredInterval: rule.preferred,
     hostYears,
+    hostCrops,
     plain,
     publisher: rule.publisher,
     url: rule.url,
@@ -320,6 +329,7 @@ export function analyzeRotation(
   });
 
   const capturedLb = transitions.reduce((s, t) => s + t.capturedLb, 0);
+  const earner = [...transitions].sort((a, b) => b.capturedLb - a.capturedLb)[0];
   const bestPossibleLb = Math.max(
     ...permutations(observedSequence).map((seq) => nitrogenCapture(seq, preceding))
   );
@@ -344,14 +354,44 @@ export function analyzeRotation(
     pricePerLb: PRICE_PER_LB,
     caveat:
       "Fertiliser-equivalent value of a documented previous-crop credit. Manitoba does not sanction cutting rates by this amount, because yield potential rises and absorbs some of it.",
+    creditCrop: earner && earner.capturedLb > 0 ? earner.from : null,
+    creditFollower: earner && earner.capturedLb > 0 ? earner.to : null,
   };
 
   // --- Disease, ignoring nitrogen -------------------------------------
   const rules = PATHOGEN_RULES.map((rule) => evaluateRule(rule, history));
   const broken = rules.filter((r) => r.binding && r.verdict === "FAIL");
   const worst = broken[0];
+
+  // One sentence naming the crop and the gap, for a reader with no agronomy
+  // background. Rules that describe the same problem are said once.
+  const shortfall = (r: DiseaseRuleResult) => (r.observedInterval ?? 0) / r.minimumInterval;
+  const tightest = [...broken].sort((a, b) => shortfall(a) - shortfall(b))[0];
+  const sameProblem = tightest
+    ? broken.filter(
+        (r) =>
+          r.observedInterval === tightest.observedInterval &&
+          r.minimumInterval === tightest.minimumInterval &&
+          r.hostCrops.join() === tightest.hostCrops.join()
+      )
+    : [];
+  const names = sameProblem.map((r) => r.short.toLowerCase());
+  const nameList =
+    names.length > 1
+      ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+      : (names[0] ?? "");
+  const cropList = tightest ? tightest.hostCrops.join(" and ") : "";
+  const gapPhrase =
+    tightest?.observedInterval === 1 ? "every year" : `every ${tightest?.observedInterval} years`;
+  const plainCause = tightest
+    ? `${cropList} ${tightest.hostCrops.length > 1 ? "are" : "is"} grown ${gapPhrase} here. ` +
+      `${nameList.charAt(0).toUpperCase()}${nameList.slice(1)} ${names.length > 1 ? "need" : "needs"} ` +
+      `at least ${tightest.minimumInterval} years between them.`
+    : "";
+
   const disease: DiseaseAssessment = {
     clean: broken.length === 0,
+    plainCause,
     headline: worst
       ? `${worst.short} needs ${worst.minimumInterval} years between host crops and this rotation has ${worst.observedInterval}.`
       : "No binding rotation rule is broken.",

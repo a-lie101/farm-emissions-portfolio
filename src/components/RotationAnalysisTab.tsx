@@ -1,9 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { cropStyle } from "../data/cropStyles";
-import type { DiseaseRuleResult, RotationAnalysis } from "../lib/rotationEngine";
+import type { RotationAnalysis } from "../lib/rotationEngine";
 
 const money = (v: number) => "$" + Math.round(v).toLocaleString("en-CA");
 const perAcre = (v: number) => "$" + v.toFixed(2);
+
+const listAnd = (items: string[]) =>
+  items.length <= 1
+    ? (items[0] ?? "")
+    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
 function Disclosure({
   title,
@@ -51,49 +56,29 @@ function Disclosure({
   );
 }
 
-function CropChip({ crop, size = "md" }: { crop: string; size?: "sm" | "md" }) {
-  const style = cropStyle(crop);
-  return (
-    <span
-      title={crop}
-      className={`flex items-center justify-center rounded font-bold ${
-        size === "sm" ? "h-5 text-[9px]" : "h-6 text-[10px]"
-      }`}
-      style={{ backgroundColor: style.bg, color: style.text, flex: "1 1 0" }}
-    >
-      {style.abbr}
-    </span>
-  );
-}
-
-function HistoryStrip({ analysis }: { analysis: RotationAnalysis }) {
-  const { history } = analysis;
-  const cropsPresent = [...new Set(history.map((h) => h.crop))];
-
+// Full crop names with arrows between them. Wraps rather than truncates.
+function SequenceRow({ label, crops, muted }: { label: string; crops: string[]; muted?: boolean }) {
   return (
     <div>
-      <div className="flex gap-0.5">
-        {history.map((entry) => (
-          <div key={entry.year} className="flex flex-1 flex-col items-center gap-0.5">
-            <CropChip crop={entry.crop} />
-            <span className="text-[9px] tabular-nums text-slate-400">
-              {String(entry.year).slice(2)}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-        {cropsPresent.map((crop) => {
+      <p
+        className={`mb-1 text-[10px] font-bold uppercase tracking-wide ${
+          muted ? "text-slate-400" : "text-slate-500"
+        }`}
+      >
+        {label}
+      </p>
+      <div className={`flex flex-wrap items-center gap-x-1 gap-y-1 ${muted ? "opacity-70" : ""}`}>
+        {crops.map((crop, i) => {
           const style = cropStyle(crop);
           return (
-            <span key={crop} className="flex items-center gap-1.5 text-[11px] text-slate-600">
+            <span key={i} className="flex items-center gap-1">
+              {i > 0 && <span className="text-xs text-slate-300">→</span>}
               <span
-                className="flex h-3.5 w-3.5 items-center justify-center rounded text-[8px] font-bold"
+                className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
                 style={{ backgroundColor: style.bg, color: style.text }}
               >
-                {style.abbr}
+                {crop}
               </span>
-              {crop}
             </span>
           );
         })}
@@ -102,145 +87,102 @@ function HistoryStrip({ analysis }: { analysis: RotationAnalysis }) {
   );
 }
 
-function SequenceRow({ label, crops, muted }: { label: string; crops: string[]; muted?: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className={`w-24 shrink-0 text-[11px] font-semibold ${muted ? "text-slate-400" : "text-slate-700"}`}
-      >
-        {label}
-      </span>
-      <div className={`flex flex-1 gap-0.5 ${muted ? "opacity-60" : ""}`}>
-        {crops.map((crop, i) => (
-          <CropChip key={i} crop={crop} size="sm" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const VERDICT_TONE: Record<DiseaseRuleResult["verdict"], string> = {
-  FAIL: "text-red-600",
-  WARN: "text-amber-600",
-  PASS: "text-emerald-600",
-  UNKNOWN: "text-slate-400",
-};
-
-function RuleRow({ rule }: { rule: DiseaseRuleResult }) {
-  const gap = rule.observedInterval;
-  const interval =
-    gap === null
-      ? "not measurable"
-      : rule.verdict === "FAIL"
-        ? `${gap} yr apart, needs ${rule.minimumInterval}`
-        : rule.verdict === "WARN"
-          ? `${gap} yr apart, prefers ${rule.preferredInterval}`
-          : `${gap} yr apart, clear`;
-  return (
-    <div className="flex items-baseline justify-between gap-2 py-1">
-      <span className="min-w-0 text-[11px] text-slate-600">
-        {rule.short}
-        {!rule.binding && <span className="ml-1 text-slate-400">· advisory</span>}
-      </span>
-      <span className={`shrink-0 text-[11px] font-semibold ${VERDICT_TONE[rule.verdict]}`}>
-        {interval}
-      </span>
-    </div>
-  );
-}
-
 export default function RotationAnalysisTab({ analysis }: { analysis: RotationAnalysis }) {
   const { nitrogen, disease, yieldRisk } = analysis;
-  const bindingBroken = disease.rules.filter((r) => r.binding && r.verdict === "FAIL");
+  const broken = disease.rules.filter((r) => r.binding && r.verdict === "FAIL");
+  const tightCropList = [...new Set(yieldRisk.charges.map((c) => c.crop))];
+  const tightCrops = listAnd(tightCropList);
 
   return (
     <div className="space-y-4 px-5 py-4">
-      {/* What we read */}
+      {/* The rotation, current and suggested */}
       <div>
-        <div className="mb-2 flex items-baseline justify-between">
-          <h3 className="font-display text-sm font-bold text-slate-800">Rotation as read</h3>
+        <div className="mb-2.5 flex items-baseline justify-between">
+          <h3 className="font-display text-sm font-bold text-slate-800">5 year analysis</h3>
           <span className="text-[11px] text-slate-400">
-            {analysis.fieldId} · {analysis.acres.toLocaleString()} acres
+            {analysis.fieldId && `${analysis.fieldId} · `}
+            {analysis.acres.toLocaleString()} acres
           </span>
         </div>
-        <HistoryStrip analysis={analysis} />
-      </div>
-
-      {/* What to do next */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
-        <h3 className="mb-2.5 font-display text-sm font-bold text-slate-800">
-          {!analysis.alreadyOptimal
-            ? "Recommended order"
-            : analysis.observedViolations > 0
-              ? "Reordering will not fix this"
-              : "No reordering needed"}
-        </h3>
-        <div className="space-y-1.5">
-          <SequenceRow label="As grown" crops={analysis.observedSequence} muted />
-          <SequenceRow label="Recommended" crops={analysis.recommendedSequence} />
+        <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+          <SequenceRow
+            label={analysis.alreadyOptimal ? "Rotation" : "As grown"}
+            crops={analysis.observedSequence}
+            muted={!analysis.alreadyOptimal}
+          />
+          {!analysis.alreadyOptimal && (
+            <SequenceRow label="Better order" crops={analysis.recommendedSequence} />
+          )}
         </div>
-        <p className="mt-2.5 text-xs leading-relaxed text-slate-600">{analysis.why}</p>
       </div>
 
-      {/* Nitrogen */}
+      {/* Money already earned */}
       <Disclosure
-        title="Nitrogen already captured"
-        pill={nitrogen.arrangedWell ? "Arranged well" : `${nitrogen.wastedLb} lb/ac missed`}
-        tone={nitrogen.arrangedWell ? "green" : "amber"}
+        title="Nitrogen saved"
+        pill={
+          nitrogen.capturedLb === 0 ? "None" : nitrogen.arrangedWell ? "Arranged well" : "Could be better"
+        }
+        tone={nitrogen.capturedLb === 0 ? "slate" : nitrogen.arrangedWell ? "green" : "amber"}
       >
-        <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
-          {perAcre(nitrogen.capturedValuePerAc)}
-          <span className="ml-1 text-base font-bold text-slate-500">per acre</span>
-        </p>
-        <p className="mt-0.5 text-xs text-slate-500">
-          {money(nitrogen.capturedValueField)} across the field · {nitrogen.capturedLb} lb/ac of
-          nitrogen at {perAcre(nitrogen.pricePerLb)}/lb
-        </p>
-        <p className="mt-2.5 text-xs leading-relaxed text-slate-600">{nitrogen.explanation}</p>
-
-        {nitrogen.transitions
-          .filter((t) => t.capturedLb > 0)
-          .map((t) => (
-            <p key={t.year} className="mt-2 rounded-lg bg-emerald-50 px-2.5 py-2 text-xs leading-relaxed text-emerald-800">
-              <span className="font-semibold">{t.year}:</span> {t.why}
+        {nitrogen.capturedLb > 0 ? (
+          <>
+            <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
+              {perAcre(nitrogen.capturedValuePerAc)}
+              <span className="ml-1.5 text-base font-bold text-slate-500">per acre</span>
             </p>
-          ))}
-
-        <p className="mt-2.5 text-[11px] leading-relaxed text-slate-400">{nitrogen.caveat}</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {money(nitrogen.capturedValueField)} across the field
+            </p>
+            <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
+              {nitrogen.creditCrop} left about {nitrogen.capturedLb} lb of nitrogen per acre in the
+              soil for the {nitrogen.creditFollower?.toLowerCase()} that followed, so less
+              fertiliser had to be bought.
+            </p>
+          </>
+        ) : (
+          <p className="text-xs leading-relaxed text-slate-600">
+            Nothing in this rotation leaves nitrogen behind. Adding a pulse crop such as peas or
+            lentils is what creates this saving.
+          </p>
+        )}
       </Disclosure>
 
-      {/* Disease */}
+      {/* What is wrong */}
       <Disclosure
         title="Disease risk"
-        pill={
-          disease.clean
-            ? "Clear"
-            : `${bindingBroken.length} rule${bindingBroken.length === 1 ? "" : "s"} broken`
-        }
-        tone={disease.clean ? "green" : "red"}
+        pill={broken.length ? `${broken.length} problem${broken.length === 1 ? "" : "s"}` : "Clear"}
+        tone={broken.length ? "red" : "green"}
       >
-        <p className="text-sm leading-relaxed text-slate-700">{disease.headline}</p>
-        <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{disease.explanation}</p>
-
-        <div className="mt-2.5 divide-y divide-slate-100 border-t border-slate-100 pt-1">
-          {disease.rules.map((rule) => (
-            <RuleRow key={rule.pathogen} rule={rule} />
-          ))}
-        </div>
-
-        <p className="mt-2.5 text-[11px] leading-relaxed text-slate-400">
-          Binding rules decide what is possible. Advisory rules warn only, because airborne spores
-          arrive whatever you grow.
-        </p>
+        {broken.length ? (
+          <>
+            <p className="text-xs leading-relaxed text-slate-700">
+              {disease.plainCause}
+            </p>
+            <div className="mt-2.5 space-y-1.5">
+              {broken.map((rule) => (
+                <div key={rule.pathogen} className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs font-semibold text-slate-700">{rule.short}</span>
+                  <span className="shrink-0 text-[11px] text-slate-500">
+                    grown every {rule.observedInterval} years, needs {rule.minimumInterval}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-xs leading-relaxed text-slate-600">
+            Every crop is spaced far enough apart to keep the main rotation diseases down.
+          </p>
+        )}
       </Disclosure>
 
-      {/* Yield */}
+      {/* What it costs */}
       <Disclosure
         title="Yield risk"
         pill={
           yieldRisk.tightYears
-            ? `Tight in ${yieldRisk.tightYears} of ${yieldRisk.windowYears}`
-            : "No charge"
+            ? `${yieldRisk.tightYears} of ${yieldRisk.windowYears} years tight`
+            : "Clear"
         }
         tone={yieldRisk.tightYears ? "amber" : "green"}
       >
@@ -248,32 +190,28 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
           <>
             <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
               {perAcre(yieldRisk.passPerAcre)}
-              <span className="ml-1 text-base font-bold text-slate-500">per acre</span>
+              <span className="ml-1.5 text-base font-bold text-slate-500">per acre</span>
             </p>
             <p className="mt-0.5 text-xs text-slate-500">
-              {money(yieldRisk.fieldTotalPerPass)} across the field, in each year the rotation is
-              tight. {yieldRisk.tightYears} of the last {yieldRisk.windowYears} years{" "}
-              {yieldRisk.tightYears === 1 ? "qualifies" : "qualify"}.
+              {money(yieldRisk.fieldTotalPerPass)} across the field, in each tight year
             </p>
-            <p className="mt-2.5 text-xs leading-relaxed text-slate-600">{yieldRisk.basis}</p>
-            {yieldRisk.charges.map((c) => (
-              <p key={c.year} className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800">
-                <span className="font-semibold">{c.year}:</span> {c.crop} came back after{" "}
-                {c.observed} years where {c.required} are recommended, so a fungicide pass is
-                charged against it.
-              </p>
-            ))}
+            <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
+              {tightCrops} {tightCropList.length > 1 ? "come" : "comes"} back too soon, so a
+              fungicide pass is usually needed. Lost yield itself can only be measured by walking
+              the field.
+            </p>
           </>
         ) : (
-          <p className="text-sm text-slate-600">{yieldRisk.headline}</p>
+          <p className="text-xs leading-relaxed text-slate-600">
+            No extra fungicide pass is expected from the way this rotation is spaced.
+          </p>
         )}
-        <p className="mt-2.5 text-xs leading-relaxed text-slate-500">{yieldRisk.scoutingNote}</p>
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">{yieldRisk.doNotSum}</p>
       </Disclosure>
 
-      {/* Provenance, quiet by default */}
+      {/* Quiet by default */}
       <Disclosure title="Where this comes from" tone="slate" defaultOpen={false}>
         <p className="text-xs leading-relaxed text-slate-600">{analysis.sourceNote}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-600">{nitrogen.caveat}</p>
         <ul className="mt-2 space-y-1">
           {[...new Map(disease.rules.map((r) => [r.publisher, r])).values()].map((rule) => (
             <li key={rule.publisher}>
@@ -288,11 +226,6 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
             </li>
           ))}
         </ul>
-        <p className="mt-2.5 text-[11px] leading-relaxed text-slate-400">
-          Fertiliser actually applied is unobserved, so the nitrogen figure is a contribution, not a
-          measured saving. One field cannot prove a different rotation would have done better,
-          because the alternative was never grown here.
-        </p>
       </Disclosure>
     </div>
   );
