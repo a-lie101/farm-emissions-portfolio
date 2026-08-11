@@ -111,7 +111,7 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
             muted={!analysis.alreadyOptimal}
           />
           {!analysis.alreadyOptimal && (
-            <SequenceRow label="Better order" crops={analysis.recommendedSequence} />
+            <SequenceRow label="Recommended sequence" crops={analysis.recommendedSequence} />
           )}
         </div>
       </div>
@@ -134,9 +134,8 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
               {money(nitrogen.capturedValueField)} across the field
             </p>
             <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
-              {nitrogen.creditCrop} left about {nitrogen.capturedLb} lb of nitrogen per acre in the
-              soil for the {nitrogen.creditFollower?.toLowerCase()} that followed, so less
-              fertiliser had to be bought.
+              {nitrogen.creditCrop} left a {nitrogen.capturedLb} lb/ac nitrogen credit for the{" "}
+              {nitrogen.creditFollower?.toLowerCase()} that followed.
             </p>
           </>
         ) : (
@@ -162,9 +161,7 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
               {broken.map((rule) => (
                 <div key={rule.pathogen} className="flex items-baseline justify-between gap-2">
                   <span className="text-xs font-semibold text-slate-700">{rule.short}</span>
-                  <span className="shrink-0 text-[11px] text-slate-500">
-                    grown every {rule.observedInterval} years, needs {rule.minimumInterval}
-                  </span>
+                  <span className="shrink-0 text-[11px] text-slate-400">{rule.publisher}</span>
                 </div>
               ))}
             </div>
@@ -196,9 +193,9 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
               {money(yieldRisk.fieldTotalPerPass)} across the field, in each tight year
             </p>
             <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
-              {tightCrops} {tightCropList.length > 1 ? "come" : "comes"} back too soon, so a
-              fungicide pass is usually needed. Lost yield itself can only be measured by walking
-              the field.
+              Fungicide pass budgeted for tight{" "}
+              {tightCropList.length === 1 ? tightCrops.toLowerCase() : "rotation"} years. Yield loss
+              itself requires field scouting to quantify.
             </p>
           </>
         ) : (
