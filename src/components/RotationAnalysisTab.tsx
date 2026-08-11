@@ -93,6 +93,15 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
   const tightCropList = [...new Set(yieldRisk.charges.map((c) => c.crop))];
   const tightCrops = listAnd(tightCropList);
 
+  // When a reordering is on screen, the nitrogen line describes what that
+  // reordering does to the credit rather than restating the transition.
+  const showsReorder = !analysis.alreadyOptimal && nitrogen.bestPossibleLb > 0;
+  const bestValueField = nitrogen.bestPossibleLb * nitrogen.pricePerLb * analysis.acres;
+  const headlinePerAc =
+    nitrogen.wastedLb > 0
+      ? nitrogen.bestPossibleLb * nitrogen.pricePerLb
+      : nitrogen.capturedValuePerAc;
+
   return (
     <div className="space-y-4 px-5 py-4">
       {/* The rotation, current and suggested */}
@@ -124,19 +133,29 @@ export default function RotationAnalysisTab({ analysis }: { analysis: RotationAn
         }
         tone={nitrogen.capturedLb === 0 ? "slate" : nitrogen.arrangedWell ? "green" : "amber"}
       >
-        {nitrogen.capturedLb > 0 ? (
+        {nitrogen.bestPossibleLb > 0 ? (
           <>
             <p className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
-              {perAcre(nitrogen.capturedValuePerAc)}
+              {perAcre(headlinePerAc)}
               <span className="ml-1.5 text-base font-bold text-slate-500">per acre</span>
             </p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {money(nitrogen.capturedValueField)} across the field
-            </p>
-            <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
-              {nitrogen.creditCrop} left a {nitrogen.capturedLb} lb/ac nitrogen credit for the{" "}
-              {nitrogen.creditFollower?.toLowerCase()} that followed.
-            </p>
+            {showsReorder ? (
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                {nitrogen.wastedLb > 0
+                  ? `The same crops, reordered, satisfy the disease rules and place the pulse nitrogen ahead of a crop that buys fertiliser — about ${money(bestValueField)} of fertiliser-equivalent value, subject to soil testing.`
+                  : `The same crops, reordered, satisfy the disease rules while preserving the full pulse nitrogen contribution of about ${money(nitrogen.capturedValueField)}.`}
+              </p>
+            ) : (
+              <>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {money(nitrogen.capturedValueField)} across the field
+                </p>
+                <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
+                  {nitrogen.creditCrop} left a {nitrogen.capturedLb} lb/ac nitrogen credit for the{" "}
+                  {nitrogen.creditFollower?.toLowerCase()} that followed.
+                </p>
+              </>
+            )}
           </>
         ) : (
           <p className="text-xs leading-relaxed text-slate-600">
