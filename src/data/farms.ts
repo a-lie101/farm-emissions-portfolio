@@ -64,6 +64,8 @@ export interface Farm {
   soil: Soil;
   provenance: ProvenanceRow[];
   isReal: boolean;
+  // Set when the farm maps to a surveyed land unit with a read crop history.
+  fieldId?: string;
 }
 
 // Deterministic PRNG so the sample portfolio is stable across reloads.
@@ -391,6 +393,77 @@ const GAVELIN: Farm = {
   isReal: true,
 };
 
+// Field C0183, southern Manitoba. Boundary, acreage and crop history are
+// real. Everything on the emissions side is placeholder data.
+const C0183_AREA_HA = 55.5; // 137.1 acres
+
+const C0183_FARM: Farm = {
+  id: "field-c0183",
+  fieldId: "C0183",
+  name: "Doerksen Farms",
+  location: "Manitou, Manitoba",
+  province: "MB",
+  lat: 49.34397,
+  lon: -98.5852,
+  parcelPolygon: [
+    [49.347321869848464, -98.59033603204635],
+    [49.347321869848464, -98.58006396795365],
+    [49.34061813015153, -98.58006396795365],
+    [49.34061813015153, -98.59033603204635],
+  ],
+  totalEmissions: 34,
+  intensity: 0.61,
+  pcafScore: 4,
+  breakdown: { n2o: 27, energy: 7, soilCarbon: 0 },
+  detail: {
+    directN2O: 25.7,
+    indirectN2O: 1.3,
+    farmEnergy: 7.0,
+    upstream: 0,
+    entericCh4: 0,
+    manureCh4: 0,
+    residueExportsN2O: 0,
+    fields: [
+      {
+        label: "C0183",
+        crop: "Wheat",
+        areaHa: C0183_AREA_HA,
+        directN2O: 25.7,
+        indirectN2O: 1.3,
+        energy: 7.0,
+        total: 34.0,
+      },
+    ],
+  },
+  rotation: [
+    {
+      label: "C0183",
+      crops: [
+        "Canola", "Wheat", "Canola", "Wheat", "Canola", "Wheat", "Canola",
+        "Wheat", "Canola", "Peas", "Wheat", "Soybeans", "Wheat",
+      ],
+    },
+  ],
+  practices: ["Minimum till", "Regular soil testing"],
+  soil: {
+    sandPct: 24,
+    siltPct: 38,
+    clayPct: 36,
+    organicCarbonPct: 3.6,
+    ph: 7.6,
+    zone: "Black",
+    topsoilCm: 24,
+  },
+  provenance: [
+    { input: "Crops / rotation", status: "Observed", note: "Read from satellite crop map, 2012 to 2024" },
+    { input: "Field boundary", status: "Observed", note: "Surveyed land unit" },
+    { input: "Soil", status: "Estimated", note: "Regional profile, not sampled" },
+    { input: "Yield", status: "Estimated", note: "Regional average" },
+    { input: "Fertilizer", status: "Estimated", note: "Largest source of uncertainty" },
+  ],
+  isReal: false,
+};
+
 function generateFarms(): Farm[] {
   const farms: Farm[] = [GAVELIN];
   let nameIdx = 0;
@@ -439,10 +512,14 @@ function generateFarms(): Farm[] {
     }
   }
 
-  // Nudge sample scores (never Gavelin's) so the portfolio average is exactly 3.0.
+  farms.push(C0183_FARM);
+
+  // Nudge sample scores (never the two documented farms) so the portfolio
+  // average is exactly 3.0.
   const target = farms.length * 3;
   let sum = farms.reduce((s, f) => s + f.pcafScore, 0);
   for (let i = 1; i < farms.length && sum !== target; i++) {
+    if (farms[i].fieldId) continue;
     if (sum > target && farms[i].pcafScore > 2) {
       farms[i].pcafScore--;
       sum--;
