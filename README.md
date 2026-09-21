@@ -10,7 +10,7 @@ Gavelin Farms, backed by a real Holos whole-farm emissions run).
 
 ## Features
 
-- Google Maps-style map (CARTO Voyager tiles, Esri satellite toggle) with marker
+- Google Maps-style map (Esri street tiles, Esri satellite toggle) with marker
   clustering and zoom-scaled pins colored by emissions intensity
 - Slide-in farm panel: emissions breakdown with soil-carbon sink handling, Holos-style
   per-gas / per-field detail, phase-offset crop rotations, practices, soil profile,
