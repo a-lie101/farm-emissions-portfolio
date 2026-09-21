@@ -85,9 +85,8 @@ export default function MapView({ farms, selected, mapStyle, onSelect }: Props) 
     >
       {mapStyle === "map" ? (
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
+          attribution="Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, USGS, NRCAN, OpenStreetMap contributors"
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
         />
       ) : (
         <>
@@ -95,10 +94,7 @@ export default function MapView({ farms, selected, mapStyle, onSelect }: Props) 
             attribution="Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics"
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
-          />
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
         </>
       )}
       <ZoomControl position="topright" />
